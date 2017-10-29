@@ -11,6 +11,7 @@ import os
 from multiqc import config
 from multiqc.plots import linegraph
 from multiqc.modules.base_module import BaseMultiqcModule
+from multiqc.modules.GCModel import GCModel
 
 # Initialise the logger
 log = logging.getLogger(__name__)
@@ -27,7 +28,6 @@ class MultiqcModule(BaseMultiqcModule):
         # Parse meta information. JSON win!
         self.salmon_meta = dict()
         self.gc_bias = False
-        self.gc_bias_base_dir = ''
         for f in self.find_log_files('salmon/meta'):
             # Get the s_name from the parent directory
             s_name = os.path.basename( os.path.dirname(f['root']) )
@@ -35,6 +35,7 @@ class MultiqcModule(BaseMultiqcModule):
             self.salmon_meta[s_name] = json.loads(f['f'])
         # Parse Fragment Length Distribution logs
         self.salmon_fld = dict()
+        self.bias_path_list = []
         for f in self.find_log_files('salmon/fld'):
             # Get the s_name from the parent directory
             if os.path.basename(f['root']) == 'libParams':
@@ -49,12 +50,14 @@ class MultiqcModule(BaseMultiqcModule):
                     self.add_data_source(f, s_name)
                     self.salmon_fld[s_name] = parsed
                 meta_json_file_path = os.path.join(os.path.dirname(f['root']),'aux_info','meta_info.json')
-                self.gc_bias_base_dir = os.path.dirname(f['root'])
+                gc_bias_base_dir = os.path.dirname(f['root'])
                 with open(meta_json_file_path,'r') as meta_data_file:
                     meta_info_data = json.load(meta_data_file)
                 self.gc_bias = meta_info_data['gc_bias_correct']
                 print('Ran with GC Bias?',self.gc_bias)
-                print('Base Path: ',os.path.abspath(self.gc_bias_base_dir))
+                print('Base Path: ',os.path.abspath(gc_bias_base_dir))
+                if self.gc_bias:
+                    self.bias_path_list.append(os.path.abspath(gc_bias_base_dir))
 
 
         # Filter to strip out ignored sample names
@@ -106,5 +109,34 @@ class MultiqcModule(BaseMultiqcModule):
             print(k,':',v)
         '''
 
+        for path_var in self.bias_path_list:
+            gc_model = GCModel()
+            gc_model.from_file(path_var)
+            obs_array = gc_model.obs_.tolist()
+            exp_array = gc_model.exp_.tolist()
 
+            self.ratio_dict = dict()
+            for i in range(len(obs_array)):
+                obs = obs_array[i]
+                exp = exp_array[i]
+                ratio_value = OrderedDict()
+                j = 1
+                for o,e in zip(obs,exp):
+                    ratio = o/e
+                    ratio_value[j] = ratio
+                    j += 1
+                self.ratio_dict[i] = ratio_value
+            rconfig = {
+            'smooth_points': 500,
+            'id': 'salmon_plot',
+            'title': 'Salmon: GC Bias Distribution',
+            'ylab': 'Ratio (Observed/Expected)',
+            'xlab': 'Read count',
+            'ymin': 0,
+            'xmin': 0,
+            'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
+            }
+            self.add_section( plot = linegraph.plot(self.ratio_dict, rconfig) )
+
+        
         self.add_section( plot = linegraph.plot(self.salmon_fld, pconfig) )
