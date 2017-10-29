@@ -114,7 +114,7 @@ class MultiqcModule(BaseMultiqcModule):
             gc_model.from_file(path_var)
             obs_array = gc_model.obs_.tolist()
             exp_array = gc_model.exp_.tolist()
-
+            self.path_var = path_var.split('/')[-2]
             self.ratio_dict = dict()
             for i in range(len(obs_array)):
                 obs = obs_array[i]
@@ -129,7 +129,7 @@ class MultiqcModule(BaseMultiqcModule):
             rconfig = {
             'smooth_points': 500,
             'id': 'salmon_plot',
-            'title': 'Salmon: GC Bias Distribution',
+            'title': 'Salmon: GC Bias Distribution for '+ self.path_var,
             'ylab': 'Ratio (Observed/Expected)',
             'xlab': 'Read count',
             'ymin': 0,
