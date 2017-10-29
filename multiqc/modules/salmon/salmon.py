@@ -26,6 +26,8 @@ class MultiqcModule(BaseMultiqcModule):
 
         # Parse meta information. JSON win!
         self.salmon_meta = dict()
+        self.gc_bias = False
+        self.gc_bias_base_dir = ''
         for f in self.find_log_files('salmon/meta'):
             # Get the s_name from the parent directory
             s_name = os.path.basename( os.path.dirname(f['root']) )
@@ -46,6 +48,14 @@ class MultiqcModule(BaseMultiqcModule):
                         log.debug("Duplicate sample name found! Overwriting: {}".format(s_name))
                     self.add_data_source(f, s_name)
                     self.salmon_fld[s_name] = parsed
+                meta_json_file_path = os.path.join(os.path.dirname(f['root']),'aux_info','meta_info.json')
+                self.gc_bias_base_dir = os.path.dirname(f['root'])
+                with open(meta_json_file_path,'r') as meta_data_file:
+                    meta_info_data = json.load(meta_data_file)
+                self.gc_bias = meta_info_data['gc_bias_correct']
+                print('Ran with GC Bias?',self.gc_bias)
+                print('Base Path: ',os.path.abspath(self.gc_bias_base_dir))
+
 
         # Filter to strip out ignored sample names
         self.salmon_meta = self.ignore_samples(self.salmon_meta)
@@ -91,4 +101,10 @@ class MultiqcModule(BaseMultiqcModule):
             'xmin': 0,
             'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
         }
+        '''
+        for k,v in self.__dict__.items():
+            print(k,':',v)
+        '''
+
+
         self.add_section( plot = linegraph.plot(self.salmon_fld, pconfig) )
