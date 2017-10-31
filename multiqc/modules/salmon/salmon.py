@@ -54,8 +54,6 @@ class MultiqcModule(BaseMultiqcModule):
                 with open(meta_json_file_path,'r') as meta_data_file:
                     meta_info_data = json.load(meta_data_file)
                 self.gc_bias = meta_info_data['gc_bias_correct']
-                print('Ran with GC Bias?',self.gc_bias)
-                print('Base Path: ',os.path.abspath(gc_bias_base_dir))
                 if self.gc_bias:
                     self.bias_path_list.append(os.path.abspath(gc_bias_base_dir))
 
@@ -114,15 +112,19 @@ class MultiqcModule(BaseMultiqcModule):
             gc_model.from_file(path_var)
             obs_array = gc_model.obs_.tolist()
             exp_array = gc_model.exp_.tolist()
+            obs_weights = list(gc_model.obs_weights_)
+            exp_weights = list(gc_model.exp_weights_)
             self.path_var = path_var.split('/')[-2]
             self.ratio_dict = dict()
             for i in range(len(obs_array)):
                 obs = obs_array[i]
                 exp = exp_array[i]
+                obs_weight = obs_weights[i]
+                exp_weight = exp_weights[i]
                 ratio_value = OrderedDict()
                 j = 1
                 for o,e in zip(obs,exp):
-                    ratio = o/e
+                    ratio = (o*obs_weight)/(e*exp_weight)
                     ratio_value[j] = ratio
                     j += 1
                 self.ratio_dict[i] = ratio_value
