@@ -49,6 +49,10 @@ class MultiqcModule(BaseMultiqcModule):
                         log.debug("Duplicate sample name found! Overwriting: {}".format(s_name))
                     self.add_data_source(f, s_name)
                     self.salmon_fld[s_name] = parsed
+                '''
+                Check the meta_info.json file to check whether the salmon output is ran with gc bias or not.
+                If ran with gc_bias then add its absolute path to the list of paths where the salmon output is ran with gc_bias
+                '''
                 meta_json_file_path = os.path.join(os.path.dirname(f['root']),'aux_info','meta_info.json')
                 gc_bias_base_dir = os.path.dirname(f['root'])
                 with open(meta_json_file_path,'r') as meta_data_file:
@@ -102,11 +106,13 @@ class MultiqcModule(BaseMultiqcModule):
             'xmin': 0,
             'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
         }
-        '''
-        for k,v in self.__dict__.items():
-            print(k,':',v)
-        '''
 
+        '''
+            Iterate over the list of paths where each path has salmon output ran with gc_bias.
+            Using the GCModel class's utlity functions compute observed array, expected array and the weights.
+            Multiply the observed array and expected array with the corresponding weights and create a Ordered Dictionary,
+            containing the ratio of observed by expected array. Plot that Ordered Dict using matplotlib.
+        '''
         for path_var in self.bias_path_list:
             gc_model = GCModel()
             gc_model.from_file(path_var)

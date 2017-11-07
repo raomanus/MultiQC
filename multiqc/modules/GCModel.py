@@ -40,7 +40,11 @@ class GCModel:
         model = (model.T / model.sum(axis=1)).T
         return weights, model
         
-    # dname is the root directory of salmon output
+    '''
+        dname is the root directory of salmon output
+        Search for observed and expected gc files inside aux_info directory under dname.
+        Read those files and populate the two matrices of order 3 X 25 and two weighted matrices of order 1 X 3
+    '''
     def from_file(self, dname):
         import os
         import gzip
@@ -67,11 +71,4 @@ class GCModel:
 
         self.valid_ = True
         return True
-if __name__ == "__main__":
-    gc_model = GCModel()
-    if gc_model.from_file('/home/osboxes/Downloads/project4/ERR188041/bias'):
-        print(gc_model.obs_.tolist())
-        print(gc_model.obs_weights_)
-        print(gc_model.exp_.tolist())
-        print(gc_model.exp_weights_)
         
