@@ -113,6 +113,9 @@ class MultiqcModule(BaseMultiqcModule):
             Multiply the observed array and expected array with the corresponding weights and create a Ordered Dictionary,
             containing the ratio of observed by expected array. Plot that Ordered Dict using matplotlib.
         '''
+        self.first_model_ratio = dict()
+        self.second_model_ratio = dict()
+        self.third_model_ratio = dict()
         for path_var in self.bias_path_list:
             gc_model = GCModel()
             gc_model.from_file(path_var)
@@ -121,7 +124,7 @@ class MultiqcModule(BaseMultiqcModule):
             obs_weights = list(gc_model.obs_weights_)
             exp_weights = list(gc_model.exp_weights_)
             self.path_var = path_var.split('/')[-2]
-            self.ratio_dict = dict()
+            ratio_dict = dict()
             for i in range(len(obs_array)):
                 obs = obs_array[i]
                 exp = exp_array[i]
@@ -133,18 +136,46 @@ class MultiqcModule(BaseMultiqcModule):
                     ratio = (o*obs_weight)/(e*exp_weight)
                     ratio_value[j] = ratio
                     j += 1
-                self.ratio_dict[i] = ratio_value
-            rconfig = {
-            'smooth_points': 500,
-            'id': 'salmon_plot',
-            'title': 'Salmon: GC Bias Distribution for '+ self.path_var,
-            'ylab': 'Ratio (Observed/Expected)',
-            'xlab': 'Read count',
-            'ymin': 0,
-            'xmin': 0,
-            'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
-            }
-            self.add_section( plot = linegraph.plot(self.ratio_dict, rconfig) )
+                ratio_dict[i] = ratio_value
+            self.first_model_ratio[self.path_var] = ratio_dict[0]
+            self.second_model_ratio[self.path_var] = ratio_dict[1]
+            self.third_model_ratio[self.path_var] = ratio_dict[2]
 
+
+        fconfig = {
+        'smooth_points': 500,
+        'id': 'salmon_plot',
+        'title': 'Salmon: GC Bias Distribution in first model for different experiments',
+        'ylab': 'Ratio (Observed/Expected)',
+        'xlab': 'Read count',
+        'ymin': 0,
+        'xmin': 0,
+        'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
+        }
+        self.add_section( plot = linegraph.plot(self.first_model_ratio, fconfig) )
+
+        sconfig = {
+        'smooth_points': 500,
+        'id': 'salmon_plot',
+        'title': 'Salmon: GC Bias Distribution in second model for different experiments',
+        'ylab': 'Ratio (Observed/Expected)',
+        'xlab': 'Read count',
+        'ymin': 0,
+        'xmin': 0,
+        'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
+        }
+        self.add_section( plot = linegraph.plot(self.second_model_ratio, sconfig) )
+
+        tconfig = {
+        'smooth_points': 500,
+        'id': 'salmon_plot',
+        'title': 'Salmon: GC Bias Distribution in third model for different experiments',
+        'ylab': 'Ratio (Observed/Expected)',
+        'xlab': 'Read count',
+        'ymin': 0,
+        'xmin': 0,
+        'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
+        }
+        self.add_section( plot = linegraph.plot(self.third_model_ratio, tconfig) )
         
         self.add_section( plot = linegraph.plot(self.salmon_fld, pconfig) )
