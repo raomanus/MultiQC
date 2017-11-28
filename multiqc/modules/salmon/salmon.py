@@ -12,6 +12,7 @@ from multiqc import config
 from multiqc.plots import linegraph
 from multiqc.modules.base_module import BaseMultiqcModule
 from multiqc.modules.GCModel import GCModel
+from multiqc.modules.SEQModel import SEQModel
 
 # Initialise the logger
 log = logging.getLogger(__name__)
@@ -35,7 +36,8 @@ class MultiqcModule(BaseMultiqcModule):
             self.salmon_meta[s_name] = json.loads(f['f'])
         # Parse Fragment Length Distribution logs
         self.salmon_fld = dict()
-        self.bias_path_list = []
+        self.gc_bias_path_list = []
+        self.seq_bias_path_list = []
         for f in self.find_log_files('salmon/fld'):
             # Get the s_name from the parent directory
             if os.path.basename(f['root']) == 'libParams':
@@ -58,8 +60,11 @@ class MultiqcModule(BaseMultiqcModule):
                 with open(meta_json_file_path,'r') as meta_data_file:
                     meta_info_data = json.load(meta_data_file)
                 self.gc_bias = meta_info_data['gc_bias_correct']
+                self.seq_bias = meta_info_data['seq_bias_correct']
                 if self.gc_bias:
-                    self.bias_path_list.append(os.path.abspath(gc_bias_base_dir))
+                    self.gc_bias_path_list.append(os.path.abspath(gc_bias_base_dir))
+                if self.seq_bias:
+                    self.seq_bias_path_list.append(os.path.abspath(gc_bias_base_dir))
 
 
         # Filter to strip out ignored sample names
@@ -113,10 +118,13 @@ class MultiqcModule(BaseMultiqcModule):
             Multiply the observed array and expected array with the corresponding weights and create a Ordered Dictionary,
             containing the ratio of observed by expected array. Plot that Ordered Dict using matplotlib.
         '''
-        self.first_model_ratio = dict()
-        self.second_model_ratio = dict()
-        self.third_model_ratio = dict()
-        for path_var in self.bias_path_list:
+        self.gc_first_model_ratio = dict()
+        self.gc_second_model_ratio = dict()
+        self.gc_third_model_ratio = dict()
+        self.seq_three_prime = dict()
+        self.seq_five_prime = dict()
+
+        for path_var in self.gc_bias_path_list:
             gc_model = GCModel()
             gc_model.from_file(path_var)
             obs_array = gc_model.obs_.tolist()
@@ -137,9 +145,37 @@ class MultiqcModule(BaseMultiqcModule):
                     ratio_value[j] = ratio
                     j += 1
                 ratio_dict[i] = ratio_value
-            self.first_model_ratio[self.path_var] = ratio_dict[0]
-            self.second_model_ratio[self.path_var] = ratio_dict[1]
-            self.third_model_ratio[self.path_var] = ratio_dict[2]
+            self.gc_first_model_ratio[self.path_var] = ratio_dict[0]
+            self.gc_second_model_ratio[self.path_var] = ratio_dict[1]
+            self.gc_third_model_ratio[self.path_var] = ratio_dict[2]
+
+        self.seq_3prime_ratio = dict()
+        self.seq_5prime_ratio = dict()
+
+        for path_var in self.seq_bias_path_list:
+            seq_model = SEQModel()
+            seq_model.from_file(path_var)
+            obs3_array = seq_model.obs3_prime.tolist()
+            exp3_array = seq_model.exp3_prime.tolist()
+            obs5_array = seq_model.obs5_prime.tolist()
+            exp5_array = seq_model.exp5_prime.tolist()
+            self.path_var = path_var.split('/')[-2]
+            ratio_dict_3prime = OrderedDict()
+            i = 1
+            for o,e in zip(obs3_array, exp3_array):
+                ratio = o/e
+                ratio_dict_3prime[i] = ratio
+                i += 1
+
+            ratio_dict_5prime = OrderedDict()
+            j = 1
+            for o,e in zip(obs5_array, exp5_array):
+                ratio = o/e
+                ratio_dict_5prime[j] = ratio
+                j += 1
+
+            self.seq_3prime_ratio[self.path_var] = ratio_dict_3prime
+            self.seq_5prime_ratio[self.path_var] = ratio_dict_5prime
 
 
         fconfig = {
@@ -152,7 +188,7 @@ class MultiqcModule(BaseMultiqcModule):
         'xmin': 0,
         'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
         }
-        self.add_section( plot = linegraph.plot(self.first_model_ratio, fconfig) )
+        self.add_section( plot = linegraph.plot(self.gc_first_model_ratio, fconfig) )
 
         sconfig = {
         'smooth_points': 500,
@@ -164,7 +200,7 @@ class MultiqcModule(BaseMultiqcModule):
         'xmin': 0,
         'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
         }
-        self.add_section( plot = linegraph.plot(self.second_model_ratio, sconfig) )
+        self.add_section( plot = linegraph.plot(self.gc_second_model_ratio, sconfig) )
 
         tconfig = {
         'smooth_points': 500,
@@ -176,6 +212,31 @@ class MultiqcModule(BaseMultiqcModule):
         'xmin': 0,
         'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
         }
-        self.add_section( plot = linegraph.plot(self.third_model_ratio, tconfig) )
+        self.add_section( plot = linegraph.plot(self.gc_third_model_ratio, tconfig) )
+
+        tprimeconfig = {
+        'smooth_points': 500,
+        'id': 'salmon_plot',
+        'title': 'Salmon: Sequence Bias Distribution for different experiments measured from 3\' end',
+        'ylab': 'Ratio (Observed/Expected)',
+        'xlab': 'Read count',
+        'ymin': 0,
+        'xmin': 0,
+        'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
+        }
+        self.add_section( plot = linegraph.plot(self.seq_3prime_ratio, tprimeconfig) )        
         
+        fprimeconfig = {
+        'smooth_points': 500,
+        'id': 'salmon_plot',
+        'title': 'Salmon: Sequence Bias Distribution for different experiments measured from 5\' end',
+        'ylab': 'Ratio (Observed/Expected)',
+        'xlab': 'Read count',
+        'ymin': 0,
+        'xmin': 0,
+        'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
+        }
+        self.add_section( plot = linegraph.plot(self.seq_5prime_ratio, fprimeconfig) )
+
+
         self.add_section( plot = linegraph.plot(self.salmon_fld, pconfig) )
