@@ -121,6 +121,7 @@ class MultiqcModule(BaseMultiqcModule):
         self.gc_first_model_ratio = dict()
         self.gc_second_model_ratio = dict()
         self.gc_third_model_ratio = dict()
+        self.gc_avg_ratio = dict()
         self.seq_three_prime = dict()
         self.seq_five_prime = dict()
 
@@ -133,6 +134,7 @@ class MultiqcModule(BaseMultiqcModule):
             exp_weights = list(gc_model.exp_weights_)
             self.path_var = path_var.split('/')[-2]
             ratio_dict = dict()
+            avg_ratio_dict = OrderedDict()
             for i in range(len(obs_array)):
                 obs = obs_array[i]
                 exp = exp_array[i]
@@ -143,11 +145,20 @@ class MultiqcModule(BaseMultiqcModule):
                 for o,e in zip(obs,exp):
                     ratio = (o*obs_weight)/(e*exp_weight)
                     ratio_value[j] = ratio
+                    try:
+                        avg_ratio_dict[j] += ratio
+                    except:
+                        avg_ratio_dict[j] = ratio
                     j += 1
                 ratio_dict[i] = ratio_value
+
+            for k in list(avg_ratio_dict.keys()):
+                avg_ratio_dict[k] /= len(obs_array)
+
             self.gc_first_model_ratio[self.path_var] = ratio_dict[0]
             self.gc_second_model_ratio[self.path_var] = ratio_dict[1]
             self.gc_third_model_ratio[self.path_var] = ratio_dict[2]
+            self.gc_avg_ratio[self.path_var] = avg_ratio_dict
 
         self.seq_3prime_ratio = dict()
         self.seq_5prime_ratio = dict()
@@ -213,6 +224,18 @@ class MultiqcModule(BaseMultiqcModule):
         'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
         }
         self.add_section( plot = linegraph.plot(self.gc_third_model_ratio, tconfig) )
+
+        avgconfig = {
+        'smooth_points': 500,
+        'id': 'salmon_plot',
+        'title': 'Salmon: Avg GC Bias Distribution for different experiments',
+        'ylab': 'Average Ratio (Observed/Expected)',
+        'xlab': 'Read count',
+        'ymin': 0,
+        'xmin': 0,
+        'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
+        }
+        self.add_section( plot = linegraph.plot(self.gc_avg_ratio, avgconfig) )
 
         tprimeconfig = {
         'smooth_points': 500,
