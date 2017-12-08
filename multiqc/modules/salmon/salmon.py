@@ -162,7 +162,7 @@ class MultiqcModule(BaseMultiqcModule):
 
         self.seq_3prime_ratio = dict()
         self.seq_5prime_ratio = dict()
-
+        self.nucleotides = ['A','C','T','G']
         for path_var in self.seq_bias_path_list:
             seq_model = SEQModel()
             seq_model.from_file(path_var)
@@ -171,23 +171,33 @@ class MultiqcModule(BaseMultiqcModule):
             obs5_array = seq_model.obs5_prime.tolist()
             exp5_array = seq_model.exp5_prime.tolist()
             self.path_var = path_var.split('/')[-2]
-            ratio_dict_3prime = OrderedDict()
-            i = 1
-            for o,e in zip(obs3_array, exp3_array):
-                ratio = o/e
-                ratio_dict_3prime[i] = ratio
-                i += 1
+            ratio_dict_3prime = dict()
+            ratio_dict_5prime = dict()
 
-            ratio_dict_5prime = OrderedDict()
-            j = 1
-            for o,e in zip(obs5_array, exp5_array):
-                ratio = o/e
-                ratio_dict_5prime[j] = ratio
-                j += 1
+            for i in range(len(self.nucleotides)):
+                obs_3prime = obs3_array[i]
+                exp_3prime = exp3_array[i]
+                obs_5prime = obs5_array[i]
+                exp_5prime = exp5_array[i]
+
+                ratio_3prime_dict = OrderedDict()
+                ratio_5prime_dict = OrderedDict()
+                j = 1
+                for o,e in zip(obs_3prime, exp_3prime):
+                    ratio = o/e
+                    ratio_3prime_dict[j] = ratio
+                    j += 1
+                ratio_dict_3prime[self.nucleotides[i]] = ratio_3prime_dict 
+
+                j = 1
+                for o,e in zip(obs_5prime, exp_5prime):
+                    ratio = o/e
+                    ratio_5prime_dict[j] = ratio
+                    j += 1
+                ratio_dict_5prime[self.nucleotides[i]] = ratio_5prime_dict
 
             self.seq_3prime_ratio[self.path_var] = ratio_dict_3prime
             self.seq_5prime_ratio[self.path_var] = ratio_dict_5prime
-
 
         fconfig = {
         'smooth_points': 500,
@@ -237,29 +247,121 @@ class MultiqcModule(BaseMultiqcModule):
         }
         self.add_section( plot = linegraph.plot(self.gc_avg_ratio, avgconfig) )
 
-        tprimeconfig = {
+        A_nuc_dict = dict()
+        C_nuc_dict = dict()
+        T_nuc_dict = dict()
+        G_nuc_dict = dict()
+        for k in list(self.seq_3prime_ratio.keys()):
+            A_nuc_dict[k] = self.seq_3prime_ratio[k]['A']
+            C_nuc_dict[k] = self.seq_3prime_ratio[k]['C']
+            T_nuc_dict[k] = self.seq_3prime_ratio[k]['T']
+            G_nuc_dict[k] = self.seq_3prime_ratio[k]['G']
+
+        taprimeconfig = {
         'smooth_points': 500,
         'id': 'salmon_plot',
-        'title': 'Salmon: Sequence Bias Distribution for different experiments measured from 3\' end',
+        'title': 'Salmon: Sequence Bias Distribution for different experiments measured from 3\' prime end for nucleotide A',
+        'ylab': 'Ratio (Observed/Expected)',
+        'xlab': 'Read count',
+        'ymin': 0,
+        'xmin': 0,
+       'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
+        }
+        self.add_section( plot = linegraph.plot(A_nuc_dict, taprimeconfig) )        
+
+        tcprimeconfig = {
+        'smooth_points': 500,
+        'id': 'salmon_plot',
+        'title': 'Salmon: Sequence Bias Distribution for different experiments measured from 3\' prime end for nucleotide C',
+        'ylab': 'Ratio (Observed/Expected)',
+        'xlab': 'Read count',
+        'ymin': 0,
+        'xmin': 0,
+       'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
+        }
+        self.add_section( plot = linegraph.plot(C_nuc_dict, tcprimeconfig) )
+
+        ttprimeconfig = {
+        'smooth_points': 500,
+        'id': 'salmon_plot',
+        'title': 'Salmon: Sequence Bias Distribution for different experiments measured from 3\' prime end for nucleotide T',
+        'ylab': 'Ratio (Observed/Expected)',
+        'xlab': 'Read count',
+        'ymin': 0,
+        'xmin': 0,
+       'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
+        }
+        self.add_section( plot = linegraph.plot(T_nuc_dict, ttprimeconfig) )
+
+        tgprimeconfig = {
+        'smooth_points': 500,
+        'id': 'salmon_plot',
+        'title': 'Salmon: Sequence Bias Distribution for different experiments measured from 3\' prime end for nucleotide G',
+        'ylab': 'Ratio (Observed/Expected)',
+        'xlab': 'Read count',
+        'ymin': 0,
+        'xmin': 0,
+       'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
+        }
+        self.add_section( plot = linegraph.plot(G_nuc_dict, tgprimeconfig) )
+
+        A_nuc_dict = dict()
+        C_nuc_dict = dict()
+        T_nuc_dict = dict()
+        G_nuc_dict = dict()
+        for k in list(self.seq_3prime_ratio.keys()):
+            A_nuc_dict[k] = self.seq_5prime_ratio[k]['A']
+            C_nuc_dict[k] = self.seq_5prime_ratio[k]['C']
+            T_nuc_dict[k] = self.seq_5prime_ratio[k]['T']
+            G_nuc_dict[k] = self.seq_5prime_ratio[k]['G']
+
+        faprimeconfig = {
+        'smooth_points': 500,
+        'id': 'salmon_plot',
+        'title': 'Salmon: Sequence Bias Distribution for different experiments measured from 5\' end for nucleotide A',
         'ylab': 'Ratio (Observed/Expected)',
         'xlab': 'Read count',
         'ymin': 0,
         'xmin': 0,
         'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
         }
-        self.add_section( plot = linegraph.plot(self.seq_3prime_ratio, tprimeconfig) )        
-        
-        fprimeconfig = {
+        self.add_section( plot = linegraph.plot(A_nuc_dict, faprimeconfig) )
+
+        fcprimeconfig = {
         'smooth_points': 500,
         'id': 'salmon_plot',
-        'title': 'Salmon: Sequence Bias Distribution for different experiments measured from 5\' end',
+        'title': 'Salmon: Sequence Bias Distribution for different experiments measured from 5\' end for nucleotide C',
         'ylab': 'Ratio (Observed/Expected)',
         'xlab': 'Read count',
         'ymin': 0,
         'xmin': 0,
         'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
         }
-        self.add_section( plot = linegraph.plot(self.seq_5prime_ratio, fprimeconfig) )
+        self.add_section( plot = linegraph.plot(C_nuc_dict, fcprimeconfig) )
+
+        ftprimeconfig = {
+        'smooth_points': 500,
+        'id': 'salmon_plot',
+        'title': 'Salmon: Sequence Bias Distribution for different experiments measured from 5\' end for nucleotide T',
+        'ylab': 'Ratio (Observed/Expected)',
+        'xlab': 'Read count',
+        'ymin': 0,
+        'xmin': 0,
+        'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
+        }
+        self.add_section( plot = linegraph.plot(T_nuc_dict, ftprimeconfig) )
+
+        fgprimeconfig = {
+        'smooth_points': 500,
+        'id': 'salmon_plot',
+        'title': 'Salmon: Sequence Bias Distribution for different experiments measured from 5\' end for nucleotide G',
+        'ylab': 'Ratio (Observed/Expected)',
+        'xlab': 'Read count',
+        'ymin': 0,
+        'xmin': 0,
+        'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
+        }
+        self.add_section( plot = linegraph.plot(G_nuc_dict, fgprimeconfig) )
 
 
         self.add_section( plot = linegraph.plot(self.salmon_fld, pconfig) )

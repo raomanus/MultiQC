@@ -30,6 +30,15 @@ class SEQModel:
 
         offset += 3*(context_length*int_struct.size)
 
+        vlmm_rows = long_struct.unpack_from(data_[offset:])[0]
+        offset += long_struct.size
+
+        vlmm_cols = long_struct.unpack_from(data_[offset:])[0]
+        offset += long_struct.size
+
+        vlmm_struct = struct.Struct('@' + vlmm_rows * vlmm_cols * 'd')
+        offset += vlmm_struct.size
+
         nrows = long_struct.unpack_from(data_[offset:])[0]
         offset += long_struct.size
 
@@ -39,7 +48,7 @@ class SEQModel:
         model_struct = struct.Struct('@' + nrows * ncols * 'd')
         model = model_struct.unpack_from(data_[offset:])
         model = np.array(model)
-        model = (model.T / model.sum()).T
+        model = model.reshape(ncols,nrows).T
         return model
         
     '''
