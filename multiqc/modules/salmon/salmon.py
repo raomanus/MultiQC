@@ -10,6 +10,7 @@ import os
 
 from multiqc import config
 from multiqc.plots import linegraph
+from multiqc.plots import heatmap
 from multiqc.modules.base_module import BaseMultiqcModule
 from multiqc.modules.GCModel import GCModel
 from multiqc.modules.SEQModel import SEQModel
@@ -124,6 +125,8 @@ class MultiqcModule(BaseMultiqcModule):
         self.gc_avg_ratio = dict()
         self.seq_three_prime = dict()
         self.seq_five_prime = dict()
+        self.gc_heatmap_data = []
+        self.gc_heatmap_labels = []
 
         for path_var in self.gc_bias_path_list:
             gc_model = GCModel()
@@ -159,6 +162,9 @@ class MultiqcModule(BaseMultiqcModule):
             self.gc_second_model_ratio[self.path_var] = ratio_dict[1]
             self.gc_third_model_ratio[self.path_var] = ratio_dict[2]
             self.gc_avg_ratio[self.path_var] = avg_ratio_dict
+            self.gc_heatmap_data.append(list(avg_ratio_dict.values()))
+            self.gc_heatmap_labels.append(self.path_var)
+
 
         self.seq_3prime_ratio = dict()
         self.seq_5prime_ratio = dict()
@@ -260,6 +266,5 @@ class MultiqcModule(BaseMultiqcModule):
         'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
         }
         self.add_section( plot = linegraph.plot(self.seq_5prime_ratio, fprimeconfig) )
-
-
-        self.add_section( plot = linegraph.plot(self.salmon_fld, pconfig) )
+        self.add_section( plot = heatmap.plot(self.gc_heatmap_data, list(range(len(self.gc_heatmap_data[0]))), self.gc_heatmap_labels))
+        self.add_section( plot = linegraph.plot(self.salmon_fld, pconfig))
