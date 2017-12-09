@@ -160,9 +160,40 @@ class MultiqcModule(BaseMultiqcModule):
             self.gc_third_model_ratio[self.path_var] = ratio_dict[2]
             self.gc_avg_ratio[self.path_var] = avg_ratio_dict
 
+        files = list(self.gc_first_model_ratio.keys())
+        self.model_ratios = dict()
+
+        firstModelAvg = OrderedDict()
+        secondModelAvg = OrderedDict()
+        thirdModelAvg = OrderedDict()
+
+        for k in files:
+            firstModel = self.gc_first_model_ratio[k]
+            secondModel = self.gc_second_model_ratio[k]
+            thirdModel = self.gc_third_model_ratio[k]
+
+            for key in list(firstModel.keys()):
+                try:
+                    firstModelAvg[key] += firstModel[key]
+                    secondModelAvg[key] += secondModel[key]
+                    thirdModelAvg[key] += thirdModel[key]
+                except:
+                    firstModelAvg[key] = firstModel[key]
+                    secondModelAvg[key] = secondModel[key]
+                    thirdModelAvg[key] = thirdModel[key]
+
+
+        for k in list(firstModelAvg.keys()):
+            firstModelAvg[k] = float(firstModelAvg[k]/len(files))
+            secondModelAvg[k] = float(secondModelAvg[k]/len(files))
+            thirdModelAvg[k] = float(thirdModelAvg[k]/len(files))
+
+        modelAvg = {"First Model": firstModelAvg, "Second Model": secondModelAvg, "Third Model": thirdModelAvg}
+
+
         self.seq_3prime_ratio = dict()
         self.seq_5prime_ratio = dict()
-        self.nucleotides = ['A','C','T','G']
+        self.nucleotides = ['A','C','G','T']
         for path_var in self.seq_bias_path_list:
             seq_model = SEQModel()
             seq_model.from_file(path_var)
@@ -199,10 +230,83 @@ class MultiqcModule(BaseMultiqcModule):
             self.seq_3prime_ratio[self.path_var] = ratio_dict_3prime
             self.seq_5prime_ratio[self.path_var] = ratio_dict_5prime
 
+        A3_dict = dict()
+        C3_dict = dict()
+        G3_dict = dict()
+        T3_dict = dict()
+        A5_dict = dict()
+        C5_dict = dict()
+        T5_dict = dict()
+        G5_dict = dict()
+
+        for k in list(self.seq_3prime_ratio.keys()):
+            A3_dict[k] = self.seq_3prime_ratio[k]['A']
+            C3_dict[k] = self.seq_3prime_ratio[k]['C']
+            G3_dict[k] = self.seq_3prime_ratio[k]['G']
+            T3_dict[k] = self.seq_3prime_ratio[k]['T']
+        
+        for k in list(self.seq_5prime_ratio.keys()):
+            A5_dict[k] = self.seq_5prime_ratio[k]['A']
+            C5_dict[k] = self.seq_5prime_ratio[k]['C']
+            G5_dict[k] = self.seq_5prime_ratio[k]['G']
+            T5_dict[k] = self.seq_5prime_ratio[k]['T']
+
+        A3_avg = dict()
+        C3_avg = dict()
+        G3_avg = dict()
+        T3_avg = dict()
+        A5_avg = dict()
+        C5_avg = dict()
+        T5_avg = dict()
+        G5_avg = dict()
+        files_count = len(self.seq_3prime_ratio.keys())
+
+        for k in list(self.seq_3prime_ratio.keys()):
+            A3 = A3_dict[k]
+            C3 = C3_dict[k]
+            G3 = G3_dict[k]
+            T3 = T3_dict[k]
+            A5 = A5_dict[k]
+            C5 = C5_dict[k]
+            G5 = G5_dict[k]
+            T5 = T5_dict[k]
+            for key in list(A3.keys()):
+                try:
+                    A3_avg[key] += A3[key]
+                    C3_avg[key] += C3[key]
+                    G3_avg[key] += G3[key]
+                    T3_avg[key] += T3[key]
+                    A5_avg[key] += A5[key]
+                    C5_avg[key] += C5[key]
+                    G5_avg[key] += G5[key]
+                    T5_avg[key] += T5[key]
+                except:
+                    A3_avg[key] = A3[key]
+                    C3_avg[key] = C3[key]
+                    G3_avg[key] = G3[key]
+                    T3_avg[key] = T3[key]
+                    A5_avg[key] = A5[key]
+                    C5_avg[key] = C5[key]
+                    G5_avg[key] = G5[key]
+                    T5_avg[key] = T5[key]
+
+        for k in list(A3_avg.keys()):
+            A3_avg[key] = A3_avg[key]/files_count
+            C3_avg[key] = C3_avg[key]/files_count
+            G3_avg[key] = G3_avg[key]/files_count
+            T3_avg[key] = T3_avg[key]/files_count
+            A5_avg[key] = A5_avg[key]/files_count
+            C5_avg[key] = C5_avg[key]/files_count
+            G5_avg[key] = G5_avg[key]/files_count
+            T5_avg[key] = T5_avg[key]/files_count
+
+        self.seq_bias_avg = {"A3":A3_avg, "C3":C3_avg, "G3":G3_avg, "T3":T3_avg, "A5":A5_avg, "C5":C5_avg, "G5":G5_avg, "T5":T5_avg}
+
+
         fconfig = {
         'smooth_points': 500,
         'id': 'salmon_plot',
-        'title': 'Salmon: GC Bias Distribution in first model for different experiments',
+        'title': 'Salmon: GC Bias Distribution in first model for different samples',
         'ylab': 'Ratio (Observed/Expected)',
         'xlab': 'Read count',
         'ymin': 0,
@@ -214,7 +318,7 @@ class MultiqcModule(BaseMultiqcModule):
         sconfig = {
         'smooth_points': 500,
         'id': 'salmon_plot',
-        'title': 'Salmon: GC Bias Distribution in second model for different experiments',
+        'title': 'Salmon: GC Bias Distribution in second model for different samples',
         'ylab': 'Ratio (Observed/Expected)',
         'xlab': 'Read count',
         'ymin': 0,
@@ -226,7 +330,7 @@ class MultiqcModule(BaseMultiqcModule):
         tconfig = {
         'smooth_points': 500,
         'id': 'salmon_plot',
-        'title': 'Salmon: GC Bias Distribution in third model for different experiments',
+        'title': 'Salmon: GC Bias Distribution in third model for different samples',
         'ylab': 'Ratio (Observed/Expected)',
         'xlab': 'Read count',
         'ymin': 0,
@@ -238,24 +342,14 @@ class MultiqcModule(BaseMultiqcModule):
         avgconfig = {
         'smooth_points': 500,
         'id': 'salmon_plot',
-        'title': 'Salmon: Avg GC Bias Distribution for different experiments',
+        'title': 'Salmon: Avg GC Bias Distribution for across all samples',
         'ylab': 'Average Ratio (Observed/Expected)',
         'xlab': 'Read count',
         'ymin': 0,
         'xmin': 0,
         'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
         }
-        self.add_section( plot = linegraph.plot(self.gc_avg_ratio, avgconfig) )
-
-        A_nuc_dict = dict()
-        C_nuc_dict = dict()
-        T_nuc_dict = dict()
-        G_nuc_dict = dict()
-        for k in list(self.seq_3prime_ratio.keys()):
-            A_nuc_dict[k] = self.seq_3prime_ratio[k]['A']
-            C_nuc_dict[k] = self.seq_3prime_ratio[k]['C']
-            T_nuc_dict[k] = self.seq_3prime_ratio[k]['T']
-            G_nuc_dict[k] = self.seq_3prime_ratio[k]['G']
+        self.add_section( plot = linegraph.plot(modelAvg, avgconfig) )
 
         taprimeconfig = {
         'smooth_points': 500,
@@ -267,7 +361,7 @@ class MultiqcModule(BaseMultiqcModule):
         'xmin': 0,
        'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
         }
-        self.add_section( plot = linegraph.plot(A_nuc_dict, taprimeconfig) )        
+        self.add_section( plot = linegraph.plot(A3_dict, taprimeconfig) )        
 
         tcprimeconfig = {
         'smooth_points': 500,
@@ -279,19 +373,7 @@ class MultiqcModule(BaseMultiqcModule):
         'xmin': 0,
        'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
         }
-        self.add_section( plot = linegraph.plot(C_nuc_dict, tcprimeconfig) )
-
-        ttprimeconfig = {
-        'smooth_points': 500,
-        'id': 'salmon_plot',
-        'title': 'Salmon: Sequence Bias Distribution for different experiments measured from 3\' prime end for nucleotide T',
-        'ylab': 'Ratio (Observed/Expected)',
-        'xlab': 'Read count',
-        'ymin': 0,
-        'xmin': 0,
-       'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
-        }
-        self.add_section( plot = linegraph.plot(T_nuc_dict, ttprimeconfig) )
+        self.add_section( plot = linegraph.plot(C3_dict, tcprimeconfig) )
 
         tgprimeconfig = {
         'smooth_points': 500,
@@ -303,17 +385,19 @@ class MultiqcModule(BaseMultiqcModule):
         'xmin': 0,
        'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
         }
-        self.add_section( plot = linegraph.plot(G_nuc_dict, tgprimeconfig) )
+        self.add_section( plot = linegraph.plot(G3_dict, tgprimeconfig) )
 
-        A_nuc_dict = dict()
-        C_nuc_dict = dict()
-        T_nuc_dict = dict()
-        G_nuc_dict = dict()
-        for k in list(self.seq_3prime_ratio.keys()):
-            A_nuc_dict[k] = self.seq_5prime_ratio[k]['A']
-            C_nuc_dict[k] = self.seq_5prime_ratio[k]['C']
-            T_nuc_dict[k] = self.seq_5prime_ratio[k]['T']
-            G_nuc_dict[k] = self.seq_5prime_ratio[k]['G']
+        ttprimeconfig = {
+        'smooth_points': 500,
+        'id': 'salmon_plot',
+        'title': 'Salmon: Sequence Bias Distribution for different experiments measured from 3\' prime end for nucleotide T',
+        'ylab': 'Ratio (Observed/Expected)',
+        'xlab': 'Read count',
+        'ymin': 0,
+        'xmin': 0,
+       'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
+        }
+        self.add_section( plot = linegraph.plot(T3_dict, ttprimeconfig) )
 
         faprimeconfig = {
         'smooth_points': 500,
@@ -325,7 +409,7 @@ class MultiqcModule(BaseMultiqcModule):
         'xmin': 0,
         'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
         }
-        self.add_section( plot = linegraph.plot(A_nuc_dict, faprimeconfig) )
+        self.add_section( plot = linegraph.plot(A5_dict, faprimeconfig) )
 
         fcprimeconfig = {
         'smooth_points': 500,
@@ -337,19 +421,7 @@ class MultiqcModule(BaseMultiqcModule):
         'xmin': 0,
         'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
         }
-        self.add_section( plot = linegraph.plot(C_nuc_dict, fcprimeconfig) )
-
-        ftprimeconfig = {
-        'smooth_points': 500,
-        'id': 'salmon_plot',
-        'title': 'Salmon: Sequence Bias Distribution for different experiments measured from 5\' end for nucleotide T',
-        'ylab': 'Ratio (Observed/Expected)',
-        'xlab': 'Read count',
-        'ymin': 0,
-        'xmin': 0,
-        'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
-        }
-        self.add_section( plot = linegraph.plot(T_nuc_dict, ftprimeconfig) )
+        self.add_section( plot = linegraph.plot(C5_dict, fcprimeconfig) )
 
         fgprimeconfig = {
         'smooth_points': 500,
@@ -361,7 +433,31 @@ class MultiqcModule(BaseMultiqcModule):
         'xmin': 0,
         'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
         }
-        self.add_section( plot = linegraph.plot(G_nuc_dict, fgprimeconfig) )
+        self.add_section( plot = linegraph.plot(G5_dict, fgprimeconfig) )
+
+        ftprimeconfig = {
+        'smooth_points': 500,
+        'id': 'salmon_plot',
+        'title': 'Salmon: Sequence Bias Distribution for different experiments measured from 5\' end for nucleotide T',
+        'ylab': 'Ratio (Observed/Expected)',
+        'xlab': 'Read count',
+        'ymin': 0,
+        'xmin': 0,
+        'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
+        }
+        self.add_section( plot = linegraph.plot(T5_dict, ftprimeconfig) )
+
+        seqavgconfig = {
+        'smooth_points': 500,
+        'id': 'salmon_plot',
+        'title': 'Salmon: Avg Sequential Bias for each base across all samples for both 3\' and 5\' ends',
+        'ylab': 'Average Ratio (Observed/Expected)',
+        'xlab': 'Read count',
+        'ymin': 0,
+        'xmin': 0,
+        'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
+        }
+        self.add_section( plot = linegraph.plot(self.seq_bias_avg, seqavgconfig) )
 
 
         self.add_section( plot = linegraph.plot(self.salmon_fld, pconfig) )

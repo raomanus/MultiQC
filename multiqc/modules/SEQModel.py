@@ -20,14 +20,7 @@ class SEQModel:
         long_struct = struct.Struct('@q')
 
         context_length = int_struct.unpack_from(data_[offset:])[0]
-        offset += int_struct.size
-
-        left_context = int_struct.unpack_from(data_[offset:])[0]
-        offset += int_struct.size
-
-        right_context = int_struct.unpack_from(data_[offset:])[0]
-        offset += int_struct.size
-
+        offset += 3*int_struct.size
         offset += 3*(context_length*int_struct.size)
 
         vlmm_rows = long_struct.unpack_from(data_[offset:])[0]
