@@ -28,7 +28,7 @@ class MultiqcModule(BaseMultiqcModule):
         href='http://combine-lab.github.io/salmon/',
         info="is a tool for quantifying the expression of transcripts using RNA-seq data.")
 
-        # Parse meta information. JSON win!
+        # Parse meta information. JSON 
         self.salmon_meta = dict()
         self.gc_bias = False
         for f in self.find_log_files('salmon/meta'):
@@ -54,8 +54,9 @@ class MultiqcModule(BaseMultiqcModule):
                     self.add_data_source(f, s_name)
                     self.salmon_fld[s_name] = parsed
                 '''
-                Check the meta_info.json file to check whether the salmon output is ran with gc bias or not.
-                If ran with gc_bias then add its absolute path to the list of paths where the salmon output is ran with gc_bias
+                Check the meta_info.json file to check whether the salmon tool was run with gc bias and sequential bias.
+                If ran with gc_bias then add its absolute path to the list of sample paths.
+                Do same thing for seq_bias. 
                 '''
                 meta_json_file_path = os.path.join(os.path.dirname(f['root']),'aux_info','meta_info.json')
                 gc_bias_base_dir = os.path.dirname(f['root'])
@@ -202,13 +203,21 @@ class MultiqcModule(BaseMultiqcModule):
             thirdModelAvg[k] = float(thirdModelAvg[k]/len(files))
 
         modelAvg = {"First Model": firstModelAvg, "Second Model": secondModelAvg, "Third Model": thirdModelAvg}
+        
+        '''
+        For samples that were run with sequential bias, use the utility functions defined in the SeqModel.py class and
+        read the values of the observed and expected bias values from the 3' and 5' end. Calculate the ratio of observed
+        to expected from each read end for each nucleotide base.
+        '''
 
-
+        # Variable declarations for storing the ratios.
         self.seq_3prime_ratio = dict()
         self.seq_5prime_ratio = dict()
         self.nucleotides = ['A','C','G','T']
         self.seq_3prime_avg_data = []
         self.seq_5prime_avg_data = []
+
+        # Iterate over all samples that were run with sequential bias and read values into the dictionaries.
         for path_var in self.seq_bias_path_list:
             seq_model = SEQModel()
             seq_model.from_file(path_var)
@@ -226,6 +235,7 @@ class MultiqcModule(BaseMultiqcModule):
                 exp_3prime = exp3_array[i]
                 obs_5prime = obs5_array[i]
                 exp_5prime = exp5_array[i]
+                # Ordered dictionaries to store the 3' and 5' end ratios.
                 ratio_3prime_dict = OrderedDict()
                 ratio_5prime_dict = OrderedDict()
                 j = 1
@@ -238,18 +248,23 @@ class MultiqcModule(BaseMultiqcModule):
 
                 j = 1
                 for o,e in zip(obs_5prime, exp_5prime):
+                    # Calculate observed/expected ratio and add the values to respective dictionary and average array.
                     ratio = o/e
                     ratio_5prime_dict[j] = ratio
                     avg_5prime_array[j-1] = ratio
                     j += 1
                 ratio_dict_5prime[self.nucleotides[i]] = ratio_5prime_dict
 
+            # Calculate the average bias values for each end and store in dictionary
             self.seq_3prime_avg_data.append([x/len(self.nucleotides) for x in avg_3prime_array])
             self.seq_5prime_avg_data.append([x/len(self.nucleotides) for x in avg_5prime_array])
             self.seq_3prime_ratio[self.path_var] = ratio_dict_3prime
             self.seq_5prime_ratio[self.path_var] = ratio_dict_5prime
+
+        # Variables to hold the heatmap data.
         self.seq_3prime_heatmap_data = []
         self.seq_5prime_heatmap_data = []
+        # Iterate over the average ratio values for each sample and calculate cosine similarity between pairs of samples.
         for avg_data1 in self.seq_3prime_avg_data:
             cosine_distance_vector = []
             for avg_data2 in self.seq_3prime_avg_data:
@@ -264,6 +279,10 @@ class MultiqcModule(BaseMultiqcModule):
 
         seq_heat_map_labels = [x.split('/')[-2] for x in self.seq_bias_path_list]
 
+        """
+        Dictionary variables to store the ratio values for each nucleotide across samples. We plot seperate
+        line plots for each nucleotide taken from each read end.
+        """
         A3_dict = dict()
         C3_dict = dict()
         G3_dict = dict()
@@ -285,6 +304,8 @@ class MultiqcModule(BaseMultiqcModule):
             G5_dict[k] = self.seq_5prime_ratio[k]['G']
             T5_dict[k] = self.seq_5prime_ratio[k]['T']
 
+
+        # Variables to store the average sequential bias ratios for each nucleotide base across samples.
         A3_avg = dict()
         C3_avg = dict()
         G3_avg = dict()
@@ -336,205 +357,199 @@ class MultiqcModule(BaseMultiqcModule):
 
         self.seq_bias_avg = {"A3":A3_avg, "C3":C3_avg, "G3":G3_avg, "T3":T3_avg, "A5":A5_avg, "C5":C5_avg, "G5":G5_avg, "T5":T5_avg}
 
+        # Section that contains plot configurations and calls to plot functions.
+        if self.gc_bias_path_list:
+            fconfig = {
+            'smooth_points': 500,
+            'id': 'salmon_plot',
+            'title': 'Salmon: GC Bias Distribution in first model for different samples',
+            'ylab': 'Ratio (Observed/Expected)',
+            'xlab': 'Read count',
+            'ymin': 0,
+            'xmin': 0,
+            'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
+            }
+            self.add_section( plot = linegraph.plot(self.gc_first_model_ratio, fconfig) )
 
-        fconfig = {
-        'smooth_points': 500,
-        'id': 'salmon_plot',
-        'title': 'Salmon: GC Bias Distribution in first model for different samples',
-        'ylab': 'Ratio (Observed/Expected)',
-        'xlab': 'Read count',
-        'ymin': 0,
-        'xmin': 0,
-        'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
-        }
-        self.add_section( plot = linegraph.plot(self.gc_first_model_ratio, fconfig) )
+            sconfig = {
+            'smooth_points': 500,
+            'id': 'salmon_plot',
+            'title': 'Salmon: GC Bias Distribution in second model for different samples',
+            'ylab': 'Ratio (Observed/Expected)',
+            'xlab': 'Read count',
+            'ymin': 0,
+            'xmin': 0,
+            'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
+            }
+            self.add_section( plot = linegraph.plot(self.gc_second_model_ratio, sconfig) )
 
-        sconfig = {
-        'smooth_points': 500,
-        'id': 'salmon_plot',
-        'title': 'Salmon: GC Bias Distribution in second model for different samples',
-        'ylab': 'Ratio (Observed/Expected)',
-        'xlab': 'Read count',
-        'ymin': 0,
-        'xmin': 0,
-        'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
-        }
-        self.add_section( plot = linegraph.plot(self.gc_second_model_ratio, sconfig) )
+            tconfig = {
+            'smooth_points': 500,
+            'id': 'salmon_plot',
+            'title': 'Salmon: GC Bias Distribution in third model for different samples',
+            'ylab': 'Ratio (Observed/Expected)',
+            'xlab': 'Read count',
+            'ymin': 0,
+            'xmin': 0,
+            'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
+            }
+            self.add_section( plot = linegraph.plot(self.gc_third_model_ratio, tconfig) )
 
-        tconfig = {
-        'smooth_points': 500,
-        'id': 'salmon_plot',
-        'title': 'Salmon: GC Bias Distribution in third model for different samples',
-        'ylab': 'Ratio (Observed/Expected)',
-        'xlab': 'Read count',
-        'ymin': 0,
-        'xmin': 0,
-        'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
-        }
-        self.add_section( plot = linegraph.plot(self.gc_third_model_ratio, tconfig) )
+            avgconfig = {
+            'smooth_points': 500,
+            'id': 'salmon_plot',
+            'title': 'Salmon: Avg GC Bias Distribution for across all samples',
+            'ylab': 'Average Ratio (Observed/Expected)',
+            'xlab': 'Read count',
+            'ymin': 0,
+            'xmin': 0,
+            'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
+            }
+            self.add_section( plot = linegraph.plot(modelAvg, avgconfig) )
 
-        avgconfig = {
-        'smooth_points': 500,
-        'id': 'salmon_plot',
-        'title': 'Salmon: Avg GC Bias Distribution for across all samples',
-        'ylab': 'Average Ratio (Observed/Expected)',
-        'xlab': 'Read count',
-        'ymin': 0,
-        'xmin': 0,
-        'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
-        }
-        self.add_section( plot = linegraph.plot(modelAvg, avgconfig) )
+            gcheatmapconfig = {
+            'smooth_points': 500,
+            'id': 'salmon_plot',
+            'title': 'Average GC Bias similarity',
+            'ylab': 'Average Ratio (Observed/Expected)',
+            'xlab': 'Read count',
+            'ymin': 0,
+            'xmin': 0,
+            'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
+            }
+            self.add_section( plot = heatmap.plot(self.gc_heatmap_data, self.gc_heatmap_labels,self.gc_heatmap_labels,gcheatmapconfig))
 
-        taprimeconfig = {
-        'smooth_points': 500,
-        'id': 'salmon_plot',
-        'title': 'Salmon: Sequence Bias Distribution for different experiments measured from 3\' prime end for nucleotide A',
-        'ylab': 'Ratio (Observed/Expected)',
-        'xlab': 'Read count',
-        'ymin': 0,
-        'xmin': 0,
-       'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
-        }
-        self.add_section( plot = linegraph.plot(A3_dict, taprimeconfig) )        
+        if self.seq_bias_path_list:
+            taprimeconfig = {
+            'smooth_points': 500,
+            'id': 'salmon_plot',
+            'title': 'Salmon: Sequence Bias Distribution for different experiments measured from 3\' prime end for nucleotide A',
+            'ylab': 'Ratio (Observed/Expected)',
+            'xlab': 'Read count',
+            'ymin': 0,
+            'xmin': 0,
+           'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
+            }
+            self.add_section( plot = linegraph.plot(A3_dict, taprimeconfig) )        
 
-        tcprimeconfig = {
-        'smooth_points': 500,
-        'id': 'salmon_plot',
-        'title': 'Salmon: Sequence Bias Distribution for different experiments measured from 3\' prime end for nucleotide C',
-        'ylab': 'Ratio (Observed/Expected)',
-        'xlab': 'Read count',
-        'ymin': 0,
-        'xmin': 0,
-       'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
-        }
-        self.add_section( plot = linegraph.plot(C3_dict, tcprimeconfig) )
+            tcprimeconfig = {
+            'smooth_points': 500,
+            'id': 'salmon_plot',
+            'title': 'Salmon: Sequence Bias Distribution for different experiments measured from 3\' prime end for nucleotide C',
+            'ylab': 'Ratio (Observed/Expected)',
+            'xlab': 'Read count',
+            'ymin': 0,
+            'xmin': 0,
+           'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
+            }
+            self.add_section( plot = linegraph.plot(C3_dict, tcprimeconfig) )
 
-        tgprimeconfig = {
-        'smooth_points': 500,
-        'id': 'salmon_plot',
-        'title': 'Salmon: Sequence Bias Distribution for different experiments measured from 3\' prime end for nucleotide G',
-        'ylab': 'Ratio (Observed/Expected)',
-        'xlab': 'Read count',
-        'ymin': 0,
-        'xmin': 0,
-       'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
-        }
-        self.add_section( plot = linegraph.plot(G3_dict, tgprimeconfig) )
+            tgprimeconfig = {
+            'smooth_points': 500,
+            'id': 'salmon_plot',
+            'title': 'Salmon: Sequence Bias Distribution for different experiments measured from 3\' prime end for nucleotide G',
+            'ylab': 'Ratio (Observed/Expected)',
+            'xlab': 'Read count',
+            'ymin': 0,
+            'xmin': 0,
+           'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
+            }
+            self.add_section( plot = linegraph.plot(G3_dict, tgprimeconfig) )
 
-        ttprimeconfig = {
-        'smooth_points': 500,
-        'id': 'salmon_plot',
-        'title': 'Salmon: Sequence Bias Distribution for different experiments measured from 3\' prime end for nucleotide T',
-        'ylab': 'Ratio (Observed/Expected)',
-        'xlab': 'Read count',
-        'ymin': 0,
-        'xmin': 0,
-       'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
-        }
-        self.add_section( plot = linegraph.plot(T3_dict, ttprimeconfig) )
+            ttprimeconfig = {
+            'smooth_points': 500,
+            'id': 'salmon_plot',
+            'title': 'Salmon: Sequence Bias Distribution for different experiments measured from 3\' prime end for nucleotide T',
+            'ylab': 'Ratio (Observed/Expected)',
+            'xlab': 'Read count',
+            'ymin': 0,
+            'xmin': 0,
+           'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
+            }
+            self.add_section( plot = linegraph.plot(T3_dict, ttprimeconfig) )
 
-        faprimeconfig = {
-        'smooth_points': 500,
-        'id': 'salmon_plot',
-        'title': 'Salmon: Sequence Bias Distribution for different experiments measured from 5\' end for nucleotide A',
-        'ylab': 'Ratio (Observed/Expected)',
-        'xlab': 'Read count',
-        'ymin': 0,
-        'xmin': 0,
-        'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
-        }
-        self.add_section( plot = linegraph.plot(A5_dict, faprimeconfig) )
+            faprimeconfig = {
+            'smooth_points': 500,
+            'id': 'salmon_plot',
+            'title': 'Salmon: Sequence Bias Distribution for different experiments measured from 5\' end for nucleotide A',
+            'ylab': 'Ratio (Observed/Expected)',
+            'xlab': 'Read count',
+            'ymin': 0,
+            'xmin': 0,
+            'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
+            }
+            self.add_section( plot = linegraph.plot(A5_dict, faprimeconfig) )
 
-        fcprimeconfig = {
-        'smooth_points': 500,
-        'id': 'salmon_plot',
-        'title': 'Salmon: Sequence Bias Distribution for different experiments measured from 5\' end for nucleotide C',
-        'ylab': 'Ratio (Observed/Expected)',
-        'xlab': 'Read count',
-        'ymin': 0,
-        'xmin': 0,
-        'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
-        }
-        self.add_section( plot = linegraph.plot(C5_dict, fcprimeconfig) )
+            fcprimeconfig = {
+            'smooth_points': 500,
+            'id': 'salmon_plot',
+            'title': 'Salmon: Sequence Bias Distribution for different experiments measured from 5\' end for nucleotide C',
+            'ylab': 'Ratio (Observed/Expected)',
+            'xlab': 'Read count',
+            'ymin': 0,
+            'xmin': 0,
+            'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
+            }
+            self.add_section( plot = linegraph.plot(C5_dict, fcprimeconfig) )
 
-        fgprimeconfig = {
-        'smooth_points': 500,
-        'id': 'salmon_plot',
-        'title': 'Salmon: Sequence Bias Distribution for different experiments measured from 5\' end for nucleotide G',
-        'ylab': 'Ratio (Observed/Expected)',
-        'xlab': 'Read count',
-        'ymin': 0,
-        'xmin': 0,
-        'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
-        }
-        self.add_section( plot = linegraph.plot(G5_dict, fgprimeconfig) )
+            fgprimeconfig = {
+            'smooth_points': 500,
+            'id': 'salmon_plot',
+            'title': 'Salmon: Sequence Bias Distribution for different experiments measured from 5\' end for nucleotide G',
+            'ylab': 'Ratio (Observed/Expected)',
+            'xlab': 'Read count',
+            'ymin': 0,
+            'xmin': 0,
+            'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
+            }
+            self.add_section( plot = linegraph.plot(G5_dict, fgprimeconfig) )
 
-        ftprimeconfig = {
-        'smooth_points': 500,
-        'id': 'salmon_plot',
-        'title': 'Salmon: Sequence Bias Distribution for different experiments measured from 5\' end for nucleotide T',
-        'ylab': 'Ratio (Observed/Expected)',
-        'xlab': 'Read count',
-        'ymin': 0,
-        'xmin': 0,
-        'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
-        }
-        self.add_section( plot = linegraph.plot(T5_dict, ftprimeconfig) )
+            ftprimeconfig = {
+            'smooth_points': 500,
+            'id': 'salmon_plot',
+            'title': 'Salmon: Sequence Bias Distribution for different experiments measured from 5\' end for nucleotide T',
+            'ylab': 'Ratio (Observed/Expected)',
+            'xlab': 'Read count',
+            'ymin': 0,
+            'xmin': 0,
+            'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
+            }
+            self.add_section( plot = linegraph.plot(T5_dict, ftprimeconfig) )
 
-        seqavgconfig = {
-        'smooth_points': 500,
-        'id': 'salmon_plot',
-        'title': 'Salmon: Avg Sequential Bias for each base across all samples for both 3\' and 5\' ends',
-        'ylab': 'Average Ratio (Observed/Expected)',
-        'xlab': 'Read count',
-        'ymin': 0,
-        'xmin': 0,
-        'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
-        }
+            seqavgconfig = {
+            'smooth_points': 500,
+            'id': 'salmon_plot',
+            'title': 'Salmon: Avg Sequential Bias for each base across all samples for both 3\' and 5\' ends',
+            'ylab': 'Average Ratio (Observed/Expected)',
+            'xlab': 'Read count',
+            'ymin': 0,
+            'xmin': 0,
+            'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
+            }
+            self.add_section( plot = linegraph.plot(self.seq_bias_avg, seqavgconfig) )
 
-        gcheatmapconfig = {
-        'smooth_points': 500,
-        'id': 'salmon_plot',
-        'title': 'Average GC Bias similarity',
-        'ylab': 'Average Ratio (Observed/Expected)',
-        'xlab': 'Read count',
-        'ymin': 0,
-        'xmin': 0,
-        'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
-        }
+            seq3primeheatmappconfig = {
+            'smooth_points': 500,
+            'id': 'salmon_plot',
+            'title': 'Average Sequential Bias (3 Prime) similarity',
+            'ylab': 'Average Ratio (Observed/Expected)',
+            'xlab': 'Read count',
+            'ymin': 0,
+            'xmin': 0,
+            'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
+            }
+            self.add_section( plot = heatmap.plot(self.seq_3prime_heatmap_data,seq_heat_map_labels,seq_heat_map_labels,seq3primeheatmappconfig))
 
-        seq3primeheatmappconfig = {
-        'smooth_points': 500,
-        'id': 'salmon_plot',
-        'title': 'Average Sequential Bias (3 Prime) similarity',
-        'ylab': 'Average Ratio (Observed/Expected)',
-        'xlab': 'Read count',
-        'ymin': 0,
-        'xmin': 0,
-        'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
-        }
+            seq5sprimeheatmappconfig = {
+            'smooth_points': 500,
+            'id': 'salmon_plot',
+            'title': 'Average Sequential Bias (5 Prime) similarity',
+            'ylab': 'Average Ratio (Observed/Expected)',
+            'xlab': 'Read count',
+            'ymin': 0,
+            'xmin': 0,
+            'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
+            }
+            self.add_section( plot = heatmap.plot(self.seq_5prime_heatmap_data,seq_heat_map_labels,seq_heat_map_labels,seq5sprimeheatmappconfig))
 
-        seq5sprimeheatmappconfig = {
-        'smooth_points': 500,
-        'id': 'salmon_plot',
-        'title': 'Average Sequential Bias (5 Prime) similarity',
-        'ylab': 'Average Ratio (Observed/Expected)',
-        'xlab': 'Read count',
-        'ymin': 0,
-        'xmin': 0,
-        'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
-        }
-
-        self.add_section( plot = linegraph.plot(self.seq_bias_avg, seqavgconfig) )
-        self.add_section( plot = heatmap.plot(self.gc_heatmap_data, self.gc_heatmap_labels,self.gc_heatmap_labels,gcheatmapconfig))
-        self.add_section( plot = heatmap.plot(self.seq_3prime_heatmap_data,seq_heat_map_labels,seq_heat_map_labels,seq3primeheatmappconfig))
-        self.add_section( plot = heatmap.plot(self.seq_5prime_heatmap_data,seq_heat_map_labels,seq_heat_map_labels,seq5sprimeheatmappconfig))
         self.add_section( plot = linegraph.plot(self.salmon_fld, pconfig))
-
-
-        '''
-        Cosine Similarity for the Average GC Bias accross the samples
-        Cosine Similarity for the Average Sequential Bias (3 Prime) accross the samples
-        Cosine Similarity for the Average Sequential Bias (5 Prime) accross the samples
-
-        '''

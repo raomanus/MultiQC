@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 
+# Modified helper class that reads sequential bias data from gzipped binary files.
 class SEQModel:
     def __init__(self):
         self.obs3_prime = None
@@ -19,6 +20,7 @@ class SEQModel:
         int_struct = struct.Struct('@i')
         long_struct = struct.Struct('@q')
 
+        # Context length of the read for which we calculate the sequential bias ratios.
         context_length = int_struct.unpack_from(data_[offset:])[0]
         offset += 3*int_struct.size
         offset += 3*(context_length*int_struct.size)
@@ -46,12 +48,13 @@ class SEQModel:
         
     '''
         dname is the root directory of salmon output
-        Search for observed and expected gc files inside aux_info directory under dname.
-        Read those files and populate the two matrices of order 3 X 25 and two weighted matrices of order 1 X 3
+        Search for observed and expected sequential bias files inside aux_info directory under dname.
+        Read those files and return the four context length vectors to the calling function.
     '''
     def from_file(self, dname):
         import os
         import gzip
+        # File names that contain the required sequential bias info.
         obs3_name = os.path.sep.join([dname, 'aux_info', 'obs3_seq.gz'])
         exp3_name = os.path.sep.join([dname, 'aux_info', 'exp3_seq.gz'])
         obs5_name = os.path.sep.join([dname, 'aux_info', 'obs5_seq.gz'])
