@@ -495,7 +495,7 @@ class MultiqcModule(BaseMultiqcModule):
         gcheatmapconfig = {
         'smooth_points': 500,
         'id': 'salmon_plot',
-        'title': 'Salmon: Cosine Similarity for the Average GC Bias accross the samples',
+        'title': 'Average GC Bias similarity',
         'ylab': 'Average Ratio (Observed/Expected)',
         'xlab': 'Read count',
         'ymin': 0,
@@ -506,7 +506,7 @@ class MultiqcModule(BaseMultiqcModule):
         seq3primeheatmappconfig = {
         'smooth_points': 500,
         'id': 'salmon_plot',
-        'title': 'Salmon: Cosine Similarity for the Average Sequential Bias (3 Prime) accross the samples',
+        'title': 'Average Sequential Bias (3 Prime) similarity',
         'ylab': 'Average Ratio (Observed/Expected)',
         'xlab': 'Read count',
         'ymin': 0,
@@ -517,7 +517,7 @@ class MultiqcModule(BaseMultiqcModule):
         seq5sprimeheatmappconfig = {
         'smooth_points': 500,
         'id': 'salmon_plot',
-        'title': 'Salmon: Cosine Similarity for the Average Sequential Bias (5 Prime) accross the samples',
+        'title': 'Average Sequential Bias (5 Prime) similarity',
         'ylab': 'Average Ratio (Observed/Expected)',
         'xlab': 'Read count',
         'ymin': 0,
