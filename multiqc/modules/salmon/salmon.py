@@ -345,7 +345,7 @@ class MultiqcModule(BaseMultiqcModule):
                     G5_avg[key] = G5[key]
                     T5_avg[key] = T5[key]
 
-        for k in list(A3_avg.keys()):
+        for key in list(A3_avg.keys()):
             A3_avg[key] = A3_avg[key]/files_count
             C3_avg[key] = C3_avg[key]/files_count
             G3_avg[key] = G3_avg[key]/files_count
